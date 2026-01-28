@@ -1,0 +1,28 @@
+# data/models/runs (keep in Google Drive)
+ppn2v_data/
+ppn2v_models/
+ppn2v_runs/
+DATASET_01/
+DATASETS_ARWEN/
+examples/DATASET_01/
+examples/DATASETS_ARWEN/
+runs/
+outputs/
+checkpoints/
+
+# envs
+ppn2v_env/
+.venv/
+venv/
+
+# python junk
+__pycache__/
+*.pyc
+
+# large binaries
+*.tif
+*.tiff
+*.bmp
+*.npy
+*.npz
+*.net
