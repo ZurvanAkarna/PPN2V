@@ -1,0 +1,3 @@
+data_dir: ppn2v_data
+models_dir: ppn2v_models
+runs_dir: ppn2v_runs
