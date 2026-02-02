@@ -16,7 +16,30 @@ We next explored the question of avoiding using any calibration data and to go *
 
 We hope to soon merge this repository with the existing repository for `PN2V`, which is currently available [here](https://github.com/juglab/PN2V).
 
-### Conda environment
+---
+
+## 🚀 **NEW: Run on Google Colab!**
+
+Want to denoise your images without local setup? Use our automated Colab runner!
+
+**Quick Start:**
+1. Upload your data to Google Drive (`MyDrive/ppn2v_data/DATASET_01/`)
+2. Open [Google Colab](https://colab.research.google.com/)
+3. Run: `!git clone https://github.com/ZurvanAkarna/PPN2V.git && %run /content/PPN2V/ppn2v_colab_runner.py`
+
+📖 **[Complete Colab Guide →](COLAB_GUIDE.md)**
+
+Features:
+- ✅ Zero setup required - everything runs in the cloud
+- ✅ Automatic GPU acceleration
+- ✅ Full pipeline: data prep → noise model → training → prediction
+- ✅ Results automatically saved to your Google Drive
+- ✅ Includes PSNR/SSIM metrics and visualizations
+- ⏱️ ~20-40 minutes total runtime
+
+---
+
+### Conda environment (Local Installation)
 
 In order to run the notebooks, set-up the environment using `torch_ppn2v.yml` or follow these steps:
 

@@ -1,3 +1,24 @@
-data_dir: ppn2v_data
-models_dir: ppn2v_models
-runs_dir: ppn2v_runs
+# Google Drive paths configuration
+# These paths are used for Google Colab execution
+
+# Google Colab paths (when mounted to /content/drive/MyDrive)
+colab:
+  drive_root: /content/drive/MyDrive
+  data_dir: ppn2v_data/DATASET_01
+  models_dir: ppn2v_models/DATASET_01
+  runs_dir: ppn2v_runs/DATASET_01
+  repo_dir: /content/PPN2V
+
+# Local development paths
+local:
+  data_dir: ppn2v_data
+  models_dir: ppn2v_models
+  runs_dir: ppn2v_runs
+
+# Dataset configuration
+dataset:
+  name: DATASET_01
+  clean_image: clean_image.tif
+  noisy_image: Noisy images/noisy_image_jitter_skips_0__0_3_flags_0__0_4_Gaussian_0.7.tif
+  jittered_image: jittered_image.tif  # Optional, uses clean if not available
+  target_noise_level: 0.7
