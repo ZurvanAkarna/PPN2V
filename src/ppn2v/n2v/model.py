@@ -169,7 +169,7 @@ class N2VUNet(nn.Module):
         return sum(p.numel() for p in self.parameters() if p.requires_grad)
 
 
-def create_n2v_model(depth=3, start_channels=4):
+def create_n2v_model(depth=3, start_channels=4, device=None):
     """
     Factory function to create N2V model with optimal configuration
     
@@ -179,11 +179,13 @@ def create_n2v_model(depth=3, start_channels=4):
         U-Net depth (default: 3)
     start_channels : int
         Base channel count (default: 4, as per optimization study)
+    device : torch.device, optional
+        Device to place the model on (default: None, uses CPU)
     
     Returns
     -------
     N2VUNet
-        Initialized model
+        Initialized model on specified device
     """
     model = N2VUNet(
         in_channels=1,
@@ -191,8 +193,15 @@ def create_n2v_model(depth=3, start_channels=4):
         depth=depth,
         start_channels=start_channels
     )
+    
+    # Move to device if specified
+    if device is not None:
+        model = model.to(device)
+    
     print(f"Created N2V U-Net:")
     print(f"  Depth: {depth}")
     print(f"  Base channels: {start_channels}")
     print(f"  Parameters: {model.count_parameters():,}")
+    if device is not None:
+        print(f"  Device: {device}")
     return model
