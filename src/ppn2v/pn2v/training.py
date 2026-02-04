@@ -31,7 +31,8 @@ def getStratifiedCoords2D(numPix, shape):
     return coords
 
 
-def randomCropFRI(data, size, numPix, supervised=False, counter=None, augment=True):
+def randomCropFRI(data, size, numPix, supervised=False, counter=None, augment=True,
+                  maskPatchSize=5, useZeroReplacement=False):
     '''
     Crop a patch from the next image in the dataset.
     The patches are augmented by randomly deciding to mirror them and/or rotating them by multiples of 90 degrees.
@@ -52,6 +53,10 @@ def randomCropFRI(data, size, numPix, supervised=False, counter=None, augment=Tr
         If not set, a random image will be used.
     augment: bool
         should the patches be randomy flipped and rotated?
+    maskPatchSize: int
+        Size of the blind spot patch (default 5 for 5x5, use 7 for 7x7)
+    useZeroReplacement: bool
+        If True, replace masked pixels with 0 instead of random neighbor
     
     Returns
     ----------
@@ -88,11 +93,14 @@ def randomCropFRI(data, size, numPix, supervised=False, counter=None, augment=Tr
     imgOut, imgOutC, mask = randomCrop(img, size, numPix,
                                       imgClean=imgClean,
                                       augment=augment,
-                                      manipulate = manipulate )
+                                      manipulate=manipulate,
+                                      maskPatchSize=maskPatchSize,
+                                      useZeroReplacement=useZeroReplacement)
     
     return imgOut, imgOutC, mask, counter
 
-def randomCrop(img, size, numPix, imgClean=None, augment=True, manipulate=True):
+def randomCrop(img, size, numPix, imgClean=None, augment=True, manipulate=True, 
+               maskPatchSize=5, useZeroReplacement=False):
     '''
     Cuts out a random crop from an image.
     Manipulates pixels in the image (N2V style) and produces the corresponding mask of manipulated pixels.
@@ -111,6 +119,10 @@ def randomCrop(img, size, numPix, imgClean=None, augment=True, manipulate=True):
         If it is not provided the function will use the image from 'data' N2V style
     augment: bool
         should the patches be randomy flipped and rotated?
+    maskPatchSize: int
+        Size of the blind spot patch (default 5 for 5x5, use 7 for 7x7)
+    useZeroReplacement: bool
+        If True, replace masked pixels with 0 instead of random neighbor
         
     Returns
     ----------    
@@ -135,24 +147,34 @@ def randomCrop(img, size, numPix, imgClean=None, augment=True, manipulate=True):
     maxA=imgOut.shape[1]-1
     maxB=imgOut.shape[0]-1
     
+    # Calculate half-size for the mask patch
+    halfPatch = maskPatchSize // 2
+    centerIdx = halfPatch  # Center index in the ROI
+    
     if manipulate:
         mask=np.zeros(imgOut.shape)
         hotPixels=getStratifiedCoords2D(numPix,imgOut.shape)
         for p in hotPixels:
             a,b=p[1],p[0]
 
-            roiMinA=max(a-2,0)
-            roiMaxA=min(a+3,maxA)
-            roiMinB=max(b-2,0)
-            roiMaxB=min(b+3,maxB)
+            roiMinA=max(a-halfPatch,0)
+            roiMaxA=min(a+halfPatch+1,maxA+1)
+            roiMinB=max(b-halfPatch,0)
+            roiMaxB=min(b+halfPatch+1,maxB+1)
             roi=imgOut[roiMinB:roiMaxB,roiMinA:roiMaxA]
-            a_ = 2
-            b_ = 2
-            while a_==2 and b_==2:
-                a_ = np.random.randint(0, roi.shape[1] )
-                b_ = np.random.randint(0, roi.shape[0] )
-
-            repl=roi[b_,a_]
+            
+            if useZeroReplacement:
+                # Zero replacement
+                repl = 0.0
+            else:
+                # Random neighbor replacement (original behavior)
+                a_ = centerIdx
+                b_ = centerIdx
+                while a_==centerIdx and b_==centerIdx:
+                    a_ = np.random.randint(0, roi.shape[1])
+                    b_ = np.random.randint(0, roi.shape[0])
+                repl=roi[b_,a_]
+            
             imgOut[b,a]=repl
             mask[b,a]=1.0
     else:
@@ -172,7 +194,8 @@ def randomCrop(img, size, numPix, imgClean=None, augment=True, manipulate=True):
     return imgOut, imgOutC, mask
 
 
-def trainingPred(my_train_data, net, dataCounter, size, bs, numPix, device, augment=True, supervised=True):
+def trainingPred(my_train_data, net, dataCounter, size, bs, numPix, device, 
+                 augment=True, supervised=True, maskPatchSize=5, useZeroReplacement=False):
     '''
     This function will assemble a minibatch and process it using the a network.
     
@@ -192,6 +215,10 @@ def trainingPred(my_train_data, net, dataCounter, size, bs, numPix, device, augm
         The number of pixels that is to be manipulated/masked N2V style.
     augment: bool
         should the patches be randomy flipped and rotated?
+    maskPatchSize: int
+        Size of the blind spot patch (default 5 for 5x5, use 7 for 7x7)
+    useZeroReplacement: bool
+        If True, replace masked pixels with 0 instead of random neighbor
     Returns
     ----------
     samples: pytorch tensor
@@ -220,7 +247,9 @@ def trainingPred(my_train_data, net, dataCounter, size, bs, numPix, device, augm
                                           numPix,
                                           counter=dataCounter,
                                           augment=augment,
-                                          supervised=supervised)
+                                          supervised=supervised,
+                                          maskPatchSize=maskPatchSize,
+                                          useZeroReplacement=useZeroReplacement)
         inputs[j,:,:,:]=utils.imgToTensor(im)
         labels[j,:,:]=utils.imgToTensor(l)
         masks[j,:,:]=utils.imgToTensor(m)
@@ -282,7 +311,9 @@ def trainNetwork(net, trainData, valData, noiseModel, postfix, device,
                  virtualBatchSize=20, valSize=20,
                  augment=True,
                  supervised=False,
-                 earlyStopPatience=0
+                 earlyStopPatience=0,
+                 maskPatchSize=5,
+                 useZeroReplacement=False
                  ):
     '''
     Train a network using PN2V
@@ -326,6 +357,10 @@ def trainNetwork(net, trainData, valData, noiseModel, postfix, device,
         Number of epochs to wait for validation loss improvement before stopping.
         Set to 0 to disable early stopping (default).
         Recommended: 10-20 epochs.
+    maskPatchSize: int
+        Size of the blind spot patch (default 5 for 5x5, use 7 for 7x7)
+    useZeroReplacement: bool
+        If True, replace masked pixels with 0 instead of random neighbor
     
         
     Returns
@@ -378,7 +413,9 @@ def trainNetwork(net, trainData, valData, noiseModel, postfix, device,
                                                                numMaskedPixels,
                                                                device,
                                                                augment = augment,
-                                                               supervised = supervised)
+                                                               supervised = supervised,
+                                                               maskPatchSize=maskPatchSize,
+                                                               useZeroReplacement=useZeroReplacement)
             loss=lossFunction(outputs, labels, masks, noiseModel, pn2v, net.std)
             loss.backward()
             running_loss += loss.item()
