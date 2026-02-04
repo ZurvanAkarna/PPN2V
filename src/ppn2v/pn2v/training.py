@@ -281,7 +281,8 @@ def trainNetwork(net, trainData, valData, noiseModel, postfix, device,
                  numMaskedPixels=100*100/32.0, 
                  virtualBatchSize=20, valSize=20,
                  augment=True,
-                 supervised=False
+                 supervised=False,
+                 earlyStopPatience=0
                  ):
     '''
     Train a network using PN2V
@@ -320,7 +321,11 @@ def trainNetwork(net, trainData, valData, noiseModel, postfix, device,
     valSize: int
         The number of validation patches processed after each epoch.
     augment: bool
-        should the patches be randomy flipped and rotated? 
+        should the patches be randomy flipped and rotated?
+    earlyStopPatience: int
+        Number of epochs to wait for validation loss improvement before stopping.
+        Set to 0 to disable early stopping (default).
+        Recommended: 10-20 epochs.
     
         
     Returns
@@ -348,6 +353,10 @@ def trainNetwork(net, trainData, valData, noiseModel, postfix, device,
 
     trainHist=[]
     valHist=[]
+    
+    # Early stopping variables
+    bestValLoss = float('inf')
+    epochsWithoutImprovement = 0
         
     pn2v= (noiseModel is not None) and (not supervised)
     
@@ -416,10 +425,24 @@ def trainNetwork(net, trainData, valData, noiseModel, postfix, device,
             avgValLoss=np.mean(losses)
             if len(valHist)==0 or avgValLoss < np.min(np.array(valHist)):
                 torch.save(net,os.path.join(directory,"best_"+postfix+".net"))
+                bestValLoss = avgValLoss
+                epochsWithoutImprovement = 0
+                utils.printNow(f"  ✓ New best model saved! Val loss: {avgValLoss:.6f}")
+            else:
+                epochsWithoutImprovement += 1
+                utils.printNow(f"  No improvement for {epochsWithoutImprovement} epoch(s)")
+            
             valHist.append(avgValLoss)
             scheduler.step(avgValLoss)
             epoch= (stepCounter / stepsPerEpoch)
             np.save(os.path.join(directory,"history"+postfix+".npy"), (np.array( [np.arange(epoch),trainHist,valHist ] ) ) )
+            
+            # Early stopping check
+            if earlyStopPatience > 0 and epochsWithoutImprovement >= earlyStopPatience:
+                utils.printNow(f"\n⚠️  Early stopping triggered after {int(epoch)} epochs!")
+                utils.printNow(f"   Best validation loss: {bestValLoss:.6f}")
+                utils.printNow(f"   No improvement for {earlyStopPatience} epochs")
+                break
 
 
     utils.printNow('Finished Training')
