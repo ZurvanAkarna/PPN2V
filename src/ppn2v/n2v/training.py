@@ -471,7 +471,8 @@ def load_model(path, device):
     N2VUNet
         Loaded model
     """
-    model = torch.load(path, map_location=device)
+    # weights_only=False needed for PyTorch 2.6+ to load full model objects
+    model = torch.load(path, map_location=device, weights_only=False)
     model.to(device)
     model.eval()
     return model
